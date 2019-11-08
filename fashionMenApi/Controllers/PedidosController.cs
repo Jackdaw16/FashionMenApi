@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using fashionMenApi.Contexts;
@@ -71,7 +72,26 @@ namespace fashionMenApi.Controllers
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
             } 
-        } 
+        }
+        
+        /*[HttpGet("{id_usu}", Name = "GetSingleOrder")]
+        public async Task<ActionResult<IEnumerable<Pedido>>> GetAllOrderForUserId(int id_usu)
+        {
+            try
+            {
+                ArrayList<Pedido> pedido = await _db.pedidos.ToListAsync(u =>
+                    u.id_usu == id_usu);
+
+                if (pedido == null)
+                    return NotFound();
+
+                return pedido;
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+        }*/
 
     }
 }

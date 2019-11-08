@@ -153,6 +153,13 @@ namespace fashionMenApi.Controllers
                 if (id != usuario.id)
                     return BadRequest();
                 
+                using (SHA256 sha = SHA256.Create())
+                {
+                    usuario.passwd = String.Concat(sha
+                        .ComputeHash(Encoding.UTF8.GetBytes(usuario.passwd))
+                        .Select(item => item.ToString("x2")));
+                }
+                
                 _db.usuarios.Update(usuario);
                 await _db.SaveChangesAsync();
                 
@@ -163,12 +170,5 @@ namespace fashionMenApi.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
             }
         }
-
-        /*[AllowAnonymous]
-        [HttpPost("authenticate")]
-        public IActionResult Authenticate([FromBody] Usuario usuario)
-        {
-            var Usuario = 
-        }*/
     }
 }
