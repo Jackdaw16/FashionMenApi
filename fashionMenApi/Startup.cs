@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
+using AutoMapper;
 using fashionMenApi.Contexts;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
@@ -27,7 +29,7 @@ namespace fashionMenApi
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddDbContext<FashionMenDB>(options => 
-                options.UseMySQL(Configuration.GetConnectionString("DefaultConnection")));
+                options.UseMySQL(Configuration.GetConnectionString("Azure")));
             
             services.AddSwaggerGen(c =>
             {
@@ -65,6 +67,8 @@ namespace fashionMenApi
                     ValidateAudience = false
                 };
             });
+            
+            services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
             
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2)
                 .AddJsonOptions(options => options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore);

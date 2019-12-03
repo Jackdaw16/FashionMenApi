@@ -6,6 +6,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using AutoMapper;
 using fashionMenApi.Contexts;
 using fashionMenApi.Models;
 using fashionMenApi.Models.ViewModels;
@@ -15,32 +16,28 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
-using Newtonsoft.Json;
 
 namespace fashionMenApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UsuariosController : ControllerBase
+    public class UsersController : FashionMenController
     {
-        private readonly FashionMenDB _db;
-
         private readonly IConfiguration _configuration;
-        //private IUserServices _userServices;
 
-        public UsuariosController(FashionMenDB db, IConfiguration configuration)
+        public UsersController(FashionMenDB db, IConfiguration configuration, IMapper mapper)
+            : base(db, mapper)
         {
-            _db = db;
             _configuration = configuration;
         }
         
         [HttpGet]
         [Authorize]
-        public async Task<ActionResult<IEnumerable<Usuario>>> GetAllUsers()
+        public async Task<ActionResult<IEnumerable<UserResponse>>> GetAllUsers()
         {
             try
             {
-                return await _db.usuarios.ToListAsync();
+                return _mapper.Map<List<UserResponse>>(await _db.users.ToListAsync());
             }
             catch (Exception e)
             {
@@ -50,16 +47,16 @@ namespace fashionMenApi.Controllers
         
         [HttpGet("{id}", Name = "GetSingleUser")]
         [Authorize]
-        public async Task<ActionResult<Usuario>> GetSingleUser(int id)
+        public async Task<ActionResult<UserResponse>> GetSingleUser(int id)
         {
             try
             {
-                Usuario usuario = await _db.usuarios.FirstOrDefaultAsync(u => u.id == id);
+                User user = await _db.users.FirstOrDefaultAsync(u => u.id == id);
 
-                if (usuario == null)
+                if (user == null)
                     return NotFound();
 
-                return usuario;
+                return _mapper.Map<UserResponse>(user);
             }
             catch (Exception e)
             {
@@ -68,20 +65,24 @@ namespace fashionMenApi.Controllers
         }
         
         [HttpPost]
-        public async Task<ActionResult<Usuario>> AddUser([FromBody] Usuario usuario)
+        public async Task<ActionResult<UserResponse>> AddUser([FromBody] UserRegister user)
         {
             try
             {
                 using (SHA256 sha = SHA256.Create())
                 {
-                    usuario.passwd = String.Concat(sha
-                        .ComputeHash(Encoding.UTF8.GetBytes(usuario.passwd))
+                    user.password = String.Concat(sha
+                        .ComputeHash(Encoding.UTF8.GetBytes(user.password))
                         .Select(item => item.ToString("x2")));
                 }
-                _db.usuarios.Add(usuario);
+
+                User dbUser = _mapper.Map<User>(user);
+                _db.users.Add(dbUser);
                 await _db.SaveChangesAsync();
                 
-                return new CreatedAtRouteResult("GetSingleUser", new { usuario.id }, usuario);
+                return new CreatedAtRouteResult("GetSingleUser",
+                    new { dbUser.id },
+                    _mapper.Map<UserResponse>(dbUser));
             }
             catch (Exception e)
             {
@@ -90,24 +91,25 @@ namespace fashionMenApi.Controllers
         }
         
         [HttpPost("login")]
-        public async Task<ActionResult<Usuario>> LoginUser([FromBody] LoginViewModel loginModel)
+        public async Task<ActionResult<UserLoggedIn>> LoginUser([FromBody] UserLogin userLoginModel)
         {
             try
             {
-                Usuario user = await _db.usuarios
-                    .FirstOrDefaultAsync(u => u.nombre_usuario == loginModel.username);
+                User user = await _db.users
+                    .Include(u => u.orders).ThenInclude(p => p.product)
+                    .FirstOrDefaultAsync(u => u.username == userLoginModel.username);
 
                 if (user == null)
                     return NotFound();
                 
                 using (SHA256 sha = SHA256.Create())
                 {
-                    loginModel.password = String.Concat(sha
-                        .ComputeHash(Encoding.UTF8.GetBytes(loginModel.password))
+                    userLoginModel.password = String.Concat(sha
+                        .ComputeHash(Encoding.UTF8.GetBytes(userLoginModel.password))
                         .Select(item => item.ToString("x2")));
                 }
 
-                if (user.passwd != loginModel.password)
+                if (user.password != userLoginModel.password)
                     return Unauthorized();
 
                 // Leemos el secret_key desde nuestro appseting
@@ -117,7 +119,7 @@ namespace fashionMenApi.Controllers
                 // Creamos los claims (pertenencias, características) del usuario
                 var claims = new[]
                 {
-                    new Claim("UserData", JsonConvert.SerializeObject(user)),
+                    new Claim(ClaimTypes.Name, user.id.ToString()),
                 };
 
                 var tokenDescriptor = new SecurityTokenDescriptor
@@ -131,12 +133,12 @@ namespace fashionMenApi.Controllers
 
                 var tokenHandler = new JwtSecurityTokenHandler();
                 var createdToken = tokenHandler.CreateToken(tokenDescriptor);
-                
-                return Ok(new LoggedUser
+
+                return new UserLoggedIn
                 {
-                    user = user,
+                    user = _mapper.Map<UserResponse>(user),
                     accessToken = tokenHandler.WriteToken(createdToken)
-                });
+                };
             }
             catch (Exception e)
             {
@@ -146,24 +148,24 @@ namespace fashionMenApi.Controllers
         
         [HttpPut("{id}")]
         [Authorize]
-        public async Task<ActionResult<Usuario>> EditUser(int id, [FromBody] Usuario usuario)
+        public async Task<ActionResult<UserResponse>> EditUser(int id, [FromBody] UserRegister user)
         {
             try
             {
-                if (id != usuario.id)
-                    return BadRequest();
-                
                 using (SHA256 sha = SHA256.Create())
                 {
-                    usuario.passwd = String.Concat(sha
-                        .ComputeHash(Encoding.UTF8.GetBytes(usuario.passwd))
+                    user.password = String.Concat(sha
+                        .ComputeHash(Encoding.UTF8.GetBytes(user.password))
                         .Select(item => item.ToString("x2")));
                 }
+
+                User dbUser = _mapper.Map<User>(user);
+                dbUser.id = id;
                 
-                _db.usuarios.Update(usuario);
+                _db.users.Update(dbUser);
                 await _db.SaveChangesAsync();
                 
-                return Ok(usuario);
+                return _mapper.Map<UserResponse>(dbUser);
             }
             catch (Exception e)
             {

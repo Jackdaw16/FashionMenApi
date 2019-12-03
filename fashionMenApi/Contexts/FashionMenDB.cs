@@ -9,25 +9,26 @@ namespace fashionMenApi.Contexts
         {
         }
         
-        public DbSet<Usuario> usuarios { get; set; }
-        public DbSet<Producto> productos { get; set; }
-        public DbSet<Pedido> pedidos { get; set; }
+        public DbSet<User> users { get; set; }
+        public DbSet<Product> products { get; set; }
+        public DbSet<Order> orders { get; set; }
         
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<Usuario>(entity => { entity.ToTable("usuarios"); });
-            modelBuilder.Entity<Producto>(entity => { entity.ToTable("producto"); });
-            modelBuilder.Entity<Pedido>(entity =>
+            modelBuilder.Entity<User>(entity => { entity.ToTable("users"); });
+            modelBuilder.Entity<Product>(entity => { entity.ToTable("products"); });
+            modelBuilder.Entity<Order>(entity =>
             {
-                entity.ToTable("pedido");
-                entity.HasKey(e => e.idPed);
-                entity.Property(p => p.entregado).HasConversion<int>();
-                entity.HasOne(p => p.usuario)
-                    .WithMany(u => u.pedidos)
-                    .HasForeignKey(p => p.id_usu);
-                entity.HasOne(p => p.producto)
-                    .WithMany(pr => pr.pedidos)
-                    .HasForeignKey(p => p.id_producto);
+                entity.ToTable("orders");
+                entity.HasKey(e => e.id);
+                entity.Property(p => p.shipped).HasConversion<int>();
+                entity.HasOne(p => p.user)
+                    .WithMany(u => u.orders)
+                    .HasForeignKey(p => p.user_id);
+                
+                entity.HasOne(p => p.product)
+                    .WithMany(pr => pr.orders)
+                    .HasForeignKey(p => p.product_id);
             });
         }
     }

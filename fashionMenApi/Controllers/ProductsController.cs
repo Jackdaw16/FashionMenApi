@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using AutoMapper;
 using fashionMenApi.Contexts;
 using fashionMenApi.Models;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,21 +12,17 @@ namespace fashionMenApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ProductosController : ControllerBase
+    public class ProductsController : FashionMenController
     {
-        private readonly FashionMenDB _db;
-
-        public ProductosController(FashionMenDB db)
-        {
-            _db = db;
-        }
+        public ProductsController(FashionMenDB db, IMapper mapper) : base(db, mapper)
+        {}
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Producto>>> GetAllProducts()
+        public async Task<ActionResult<IEnumerable<Product>>> GetAllProducts()
         {
             try
             {
-                return await _db.productos.ToListAsync();
+                return await _db.products.ToListAsync();
             }
             catch (Exception e)
             {
